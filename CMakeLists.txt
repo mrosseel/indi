@@ -1317,6 +1317,20 @@ add_executable(indi_scopedome_dome ${scopedome_SRCS})
 target_link_libraries(indi_scopedome_dome indidriver)
 install(TARGETS indi_scopedome_dome RUNTIME DESTINATION bin )
 
+################ AshDome Dome ################
+
+set(ashdome_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_dome.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_usb21.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_sim.cpp
+   )
+
+add_executable(indi_ashdome_dome ${ashdome_SRCS})
+find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
+target_link_libraries(indi_ashdome_dome indidriver ${WIRINGPI_LIBRARIES})
+install(TARGETS indi_ashdome_dome RUNTIME DESTINATION bin )
+
+
 ########### Dome Scripting Gateway ##############
 SET(domescript_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/dome_script.cpp)
