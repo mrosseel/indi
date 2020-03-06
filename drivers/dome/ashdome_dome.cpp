@@ -90,7 +90,7 @@ void ISSnoopDevice(XMLEle *root)
 
 AshDome::AshDome()
 {
-    setVersion(1, 2);
+    setVersion(1, 0);
     targetAz         = 0;
     shutterState     = SHUTTER_UNKNOWN;
     simShutterStatus = SHUTTER_CLOSED;
@@ -322,7 +322,7 @@ bool AshDome::Handshake()
 * ***********************************************************************************/
 const char *AshDome::getDefaultName()
 {
-    return (const char *)"AshDome Dome";
+    return (const char *)"AshDome";
 }
 
 /************************************************************************************
