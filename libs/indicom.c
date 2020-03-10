@@ -1292,7 +1292,7 @@ const char *pstateStr(IPState s)
 int crackIPState(const char *str, IPState *ip)
 {
     if (!strcmp(str, "Idle"))
-        *ip = IPS_IDLE
+        *ip = IPS_IDLE;
     else if (!strncmp(str, "Ok", 2))
         *ip = IPS_OK;
     else if (!strcmp(str, "Busy"))
