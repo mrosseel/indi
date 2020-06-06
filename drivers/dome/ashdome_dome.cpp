@@ -42,6 +42,7 @@
 #include <wordexp.h>
 #include <unistd.h>
 #include <wiringPi.h>
+#include <wiringSerial.h>
 
 using namespace std;
 
@@ -90,6 +91,7 @@ void ISSnoopDevice(XMLEle *root)
 
 AshDome::AshDome()
 {
+    int fd;
     setVersion(1, 0);
     targetAz         = 0;
     shutterState     = SHUTTER_UNKNOWN;
@@ -137,15 +139,39 @@ AshDome::AshDome()
         }
     }
     wordfree(&wexp);
-    wiringPiSetup();			// Setup the library
-    pinMode(0, OUTPUT);		// Configure GPIO11 as an output
-    pinMode(1, OUTPUT);		// Configure GPIO12 as an output
-    LOG_INFO("DigitalWrite before" + digitalRead(0));
-    digitalWrite(0, true);
-    delay(1000); 	// Delay 500ms
-    digitalWrite(0, false);
-    delay(1000); 	// Delay 500ms
-    LOG_INFO("DigitalWrite after" + digitalRead(0));
+    // wiringPiSetup();			// Setup the library
+    // pinMode(0, OUTPUT);		// Configure GPIO11 as an output
+    // pinMode(1, OUTPUT);		// Configure GPIO12 as an output
+    // LOG_INFO("DigitalWrite before" + digitalRead(0));
+    // digitalWrite(0, true);
+    // delay(1000); 	// Delay 500ms
+    // digitalWrite(0, false);
+    // delay(1000); 	// Delay 500ms
+    LOG_INFO("Serial setup");
+    printf("bla");
+    fd = serialSetup(9600);
+    LOG_INFO("fd is " + fd);
+    serialPuts(fd,"hi dear");
+    LOG_INFO("Serial setup done.");
+}
+
+bool AshDome::serialSetup(int baud)
+{
+  LOG_INFO("Serial setup inside");
+  int fd ;
+
+  if ((fd = serialOpen ("/dev/ttyAMA0", baud)) < 0)
+  {
+    fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
+
+  if (wiringPiSetup () == -1)
+  {
+    fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
+    return 1 ;
+  }
+  return fd;
 }
 
 bool AshDome::initProperties()

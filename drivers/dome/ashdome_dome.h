@@ -415,6 +415,7 @@ class AshDome : public INDI::Dome
 
     virtual const char *getDefaultName() override;
     virtual bool initProperties() override;
+    virtual bool serialSetup(int);
     virtual bool updateProperties() override;
     virtual bool saveConfigItems(FILE *fp) override;
 
