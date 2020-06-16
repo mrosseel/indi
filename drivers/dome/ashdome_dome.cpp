@@ -39,10 +39,9 @@
 #include <cstring>
 #include <memory>
 #include <termios.h>
+// https://linux.die.net/man/3/wordexp
 #include <wordexp.h>
 #include <unistd.h>
-#include <wiringPi.h>
-#include <wiringSerial.h>
 
 using namespace std;
 
@@ -95,15 +94,18 @@ AshDome::AshDome()
     setVersion(1, 0);
     targetAz         = 0;
     shutterState     = SHUTTER_UNKNOWN;
-    simShutterStatus = SHUTTER_CLOSED;
+    simShutterStatus = SHUTTER_CLOSED; // delete?
 
     status        = DOME_UNKNOWN;
     targetShutter = SHUTTER_CLOSE;
 
+    // didn't work, tcp was still there ?
+    // SetDomeConnection(CONNECTION_SERIAL | CONNECTION_NONE);
     SetDomeCapability(DOME_CAN_ABORT | DOME_CAN_ABS_MOVE | DOME_CAN_REL_MOVE | DOME_CAN_PARK | DOME_HAS_SHUTTER);
 
     stepsPerTurn = -1;
 
+    LOG_INFO("In Startup.");
     // Load dome inertia table if present
     wordexp_t wexp;
     if (wordexp("~/.indi/AshDome_DomeInertia_Table.txt", &wexp, 0) == 0)
@@ -147,35 +149,19 @@ AshDome::AshDome()
     // delay(1000); 	// Delay 500ms
     // digitalWrite(0, false);
     // delay(1000); 	// Delay 500ms
-    LOG_INFO("Serial setup");
-    printf("bla");
-    fd = serialSetup(9600);
-    LOG_INFO("fd is " + fd);
-    serialPuts(fd,"hi dear");
-    LOG_INFO("Serial setup done.");
+    // LOG_INFO("Serial setup");
+    // fd = serialSetup(9600);
+    // LOG_INFO("fd is " + fd);
+    // serialPuts(fd,"hi dear");
+    // LOG_INFO("Serial setup done.");
+    fd = serialConnection->getPortFD();    
+    LOG_INFO("Startup Done.");
 }
 
-bool AshDome::serialSetup(int baud)
-{
-  LOG_INFO("Serial setup inside");
-  int fd ;
-
-  if ((fd = serialOpen ("/dev/ttyAMA0", baud)) < 0)
-  {
-    fprintf (stderr, "Unable to open serial device: %s\n", strerror (errno)) ;
-    return 1 ;
-  }
-
-  if (wiringPiSetup () == -1)
-  {
-    fprintf (stdout, "Unable to start wiringPi: %s\n", strerror (errno)) ;
-    return 1 ;
-  }
-  return fd;
-}
 
 bool AshDome::initProperties()
 {
+    LOG_INFO("Initproperties.");
     INDI::Dome::initProperties();
 
     IUFillNumber(&DomeHomePositionN[0], "DH_POSITION", "AZ (deg)", "%6.2f", 0.0, 360.0, 1.0, 0.0);
@@ -272,9 +258,15 @@ bool AshDome::initProperties()
     SetParkDataType(PARK_AZ);
 
     addAuxControls();
-
+    addDebugControl();
+    addSimulationControl();
+    addConfigurationControl();
+    addPollPeriodControl();
     // Set serial parameters
-    serialConnection->setDefaultBaudRate(Connection::Serial::B_115200);
+    serialConnection->setDefaultBaudRate(Connection::Serial::B_9600);
+    reconnect();
+
+    LOG_INFO("INitproperties Done.");
     return true;
 }
 
@@ -283,6 +275,8 @@ bool AshDome::initProperties()
 * ***********************************************************************************/
 bool AshDome::SetupParms()
 {
+    LOG_INFO("TODO SetupParams");
+    return true;
     targetAz = 0;
 
     readU32(GetImpPerTurn, stepsPerTurn);
@@ -323,15 +317,16 @@ bool AshDome::SetupParms()
     CalibrationNeededSP.s   = IPS_OK;
     IDSetSwitch(&CalibrationNeededSP, nullptr);
 
-    uint16_t fwVersion;
-    readU16(GetVersionFirmware, fwVersion);
-    FirmwareVersionsN[0].value = fwVersion / 100.0;
+    // uint16_t fwVersion;
+    // readU16(GetVersionFirmware, fwVersion);
+    // FirmwareVersionsN[0].value = fwVersion / 100.0;
 
-    uint8_t fwVersionRotary;
-    readU8(GetVersionFirmwareRotary, fwVersionRotary);
-    FirmwareVersionsN[1].value = (fwVersionRotary + 9) / 10.0;
-    FirmwareVersionsNP.s       = IPS_OK;
-    IDSetNumber(&FirmwareVersionsNP, nullptr);
+    // uint8_t fwVersionRotary;
+    // readU8(GetVersionFirmwareRotary, fwVersionRotary);
+    // FirmwareVersionsN[1].value = (fwVersionRotary + 9) / 10.0;
+    // FirmwareVersionsNP.s       = IPS_OK;
+    // IDSetNumber(&FirmwareVersionsNP, nullptr);
+    LOG_INFO("SetupParams");
     return true;
 }
 
@@ -500,6 +495,7 @@ bool AshDome::ISNewNumber(const char *dev, const char *name, double values[], ch
 * ***********************************************************************************/
 bool AshDome::Ack()
 {
+    LOG_INFO("Ack");
     sim = isSimulation();
 
     if (sim)
@@ -509,7 +505,7 @@ bool AshDome::Ack()
     else
     {
         // TODO, detect card version and instantiate correct one
-        interface.reset(static_cast<AshDomeCard *>(new AshDomeUSB21(PortFD)));
+        interface.reset(static_cast<AshDomeCard *>(new AshDomeSerial(PortFD)));
     }
 
     return interface->detect();
@@ -520,6 +516,9 @@ bool AshDome::Ack()
 * ***********************************************************************************/
 bool AshDome::UpdateShutterStatus()
 {
+    // TODO implement correct shutter status?
+    return true;
+    LOG_INFO("UpdateShutterStatus");
     int rc = readBuffer(GetAllDigitalExt, 5, digitalSensorState);
     if (rc != 0)
     {
@@ -588,6 +587,8 @@ bool AshDome::UpdateShutterStatus()
 * ***********************************************************************************/
 bool AshDome::UpdatePosition()
 {
+    LOG_INFO("TODO UpdatePosition");
+    return true;
     //    int counter = readS32(GetCounterExt);
     readS16(GetCounter, rotationCounter);
 
@@ -609,6 +610,8 @@ bool AshDome::UpdatePosition()
 * ***********************************************************************************/
 bool AshDome::UpdateSensorStatus()
 {
+    LOG_INFO("TODO UpdateSensorStatus");
+    return true;
     readU8(GetLinkStrength, linkStrength);
     readFloat(GetAnalog1, sensors[0]);
     readFloat(GetAnalog2, sensors[1]);
@@ -637,6 +640,8 @@ bool AshDome::UpdateSensorStatus()
 * ***********************************************************************************/
 bool AshDome::UpdateRelayStatus()
 {
+    LOG_INFO("TODO UpdateRelayStatus");
+    return true;
     PowerRelaysS[0].s = getInputState(OUT_CCD);
     PowerRelaysS[1].s = getInputState(OUT_SCOPE);
     PowerRelaysS[2].s = getInputState(OUT_LIGHT);
@@ -658,6 +663,7 @@ bool AshDome::UpdateRelayStatus()
 * ***********************************************************************************/
 void AshDome::TimerHit()
 {
+    LOG_INFO("TimerHit");
     if (!isConnected())
         return; //  No need to reset timer if we are not connected anymore
 
@@ -669,6 +675,9 @@ void AshDome::TimerHit()
     IDSetSwitch(&DomeShutterSP, nullptr);
 
     UpdateRelayStatus();
+
+    LOG_INFO("TimerHit is exiting early");
+    return;
 
     if (status == DOME_HOMING)
     {
@@ -818,6 +827,7 @@ void AshDome::TimerHit()
 * ***********************************************************************************/
 IPState AshDome::MoveAbs(double az)
 {
+    LOG_INFO("MoveAbs");
     LOGF_DEBUG("MoveAbs (%f)", az);
     targetAz      = az;
     double azDiff = az - DomeAbsPosN[0].value;
@@ -844,6 +854,7 @@ IPState AshDome::MoveAbs(double az)
 * ***********************************************************************************/
 IPState AshDome::MoveRel(double azDiff)
 {
+    LOG_INFO("MoveRel");
     refineMove = false;
     return sendMove(azDiff);
 }
@@ -853,6 +864,7 @@ IPState AshDome::MoveRel(double azDiff)
 * ***********************************************************************************/
 IPState AshDome::sendMove(double azDiff)
 {
+    LOG_INFO("sendMove");
     int rc;
 
     if (azDiff < 0)
@@ -887,6 +899,7 @@ IPState AshDome::sendMove(double azDiff)
 * ***********************************************************************************/
 IPState AshDome::Move(DomeDirection dir, DomeMotionCommand operation)
 {
+    LOG_INFO("Move");
     // Map to button outputs
     if (operation == MOTION_START)
     {
@@ -913,6 +926,7 @@ IPState AshDome::Move(DomeDirection dir, DomeMotionCommand operation)
 * ***********************************************************************************/
 IPState AshDome::Park()
 {
+    LOG_INFO("Park");
     // First move to park position and then optionally close shutter
     targetAz  = GetAxis1Park();
     IPState s = MoveAbs(targetAz);
@@ -929,6 +943,7 @@ IPState AshDome::Park()
 * ***********************************************************************************/
 IPState AshDome::UnPark()
 {
+    LOG_INFO("UnPark");
     if (ParkShutterS[0].s == ISS_ON)
     {
         return ControlShutter(SHUTTER_OPEN);
@@ -975,6 +990,7 @@ IPState AshDome::ControlShutter(ShutterOperation operation)
 * ***********************************************************************************/
 bool AshDome::Abort()
 {
+    LOG_INFO("Abort");
     writeCmd(Stop);
     status = DOME_READY;
     return true;
@@ -1248,14 +1264,13 @@ int AshDome::writeBuffer(AshDomeCommand cmd, int len, uint8_t *cbuf)
 
 void AshDome::reconnect()
 {
+    LOG_INFO("AshDome::reconnect -> Reconnecting serial port");
     // Reconnect serial port after write error
-    LOG_INFO("Reconnecting serial port");
     serialConnection->Disconnect();
     usleep(1000000); // 1s
     serialConnection->Connect();
     PortFD = serialConnection->getPortFD();
-    interface->setPortFD(PortFD);
-    LOG_INFO("Reconnected");
+    LOG_INFO("AshDome::reconnect -> Reconnected.");
 }
 
 ISState AshDome::getInputState(AshDomeDigitalIO channel)

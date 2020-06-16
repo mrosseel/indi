@@ -21,6 +21,19 @@
 #include "indicom.h"
 #include "indilogger.h"
 
+
+####### added by Mike for stacktracing
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+####### added by Mike for stacktracing
+
+
+
+
+
 #include <dirent.h>
 #include <cerrno>
 #include <cstring>
@@ -246,6 +259,17 @@ bool Serial::processHandshake()
 
 bool Serial::Connect(const char *port, uint32_t baud)
 {
+    LOG_INFO("Serial::Connect start");
+    // void *array[10];
+    // size_t size;
+
+    // // get void*'s for all entries on the stack
+    // size = backtrace(array, 10);
+
+    // // print out all the frames to stderr
+    // backtrace_symbols_fd(array, size, STDERR_FILENO);
+    // exit(1);
+
     if (m_Device->isSimulation())
         return true;
 
@@ -268,7 +292,7 @@ bool Serial::Connect(const char *port, uint32_t baud)
     }
 
     LOGF_DEBUG("Port FD %d", PortFD);
-
+    LOGF_INFO("Serial::Connect OK, FD: %d", PortFD);
     return true;
 }
 

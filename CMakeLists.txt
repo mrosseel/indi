@@ -1333,7 +1333,7 @@ install(TARGETS indi_scopedome_dome RUNTIME DESTINATION bin )
 
 set(ashdome_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_dome.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_usb21.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_serial.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/drivers/dome/ashdome_sim.cpp
    )
 

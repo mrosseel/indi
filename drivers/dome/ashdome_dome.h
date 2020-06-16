@@ -44,7 +44,7 @@ typedef enum
     MotionConflict,
     ParamError,
     FuncBufferError,
-    ConnectionTest = 15,
+    ConnectionTest = 65,
     SetAllDigital,
     ClearDigitalChannel,
     ClearAllDigital,
@@ -336,15 +336,15 @@ class AshDomeCard
 };
 
 /**
- * AshDome USB Card 2.1
+ * AshDome Serial connection to Arduino controlling encoders and relays
  */
-class AshDomeUSB21 : public AshDomeCard
+class AshDomeSerial : public AshDomeCard
 {
   public:
     /** Default constructor. */
-    AshDomeUSB21(int fd) { PortFD = fd; };
+    AshDomeSerial(int fd) { PortFD = fd; };
     /** Destructor. */
-    virtual ~AshDomeUSB21() = default;
+    virtual ~AshDomeSerial() = default;
 
     virtual bool detect() override;
     virtual int writeBuf(AshDomeCommand Command, uint8_t len, uint8_t *buff) override;
@@ -357,9 +357,9 @@ class AshDomeUSB21 : public AshDomeCard
     uint8_t CRC(uint8_t crc, uint8_t data);
 
     /** Prevent copy construction. */
-    AshDomeUSB21(const AshDomeUSB21 &rOriginalP);
+    AshDomeSerial(const AshDomeSerial &rOriginalP);
     /** Prevent assignment. */
-    AshDomeUSB21 &operator=(const AshDomeUSB21 &rRhsP);
+    AshDomeSerial &operator=(const AshDomeSerial &rRhsP);
 
     int PortFD;
 
@@ -397,7 +397,6 @@ class AshDomeSim : public AshDomeCard
     /** Prevent assignment. */
     AshDomeSim &operator=(const AshDomeSim &rRhsP);
 };
-
 class AshDome : public INDI::Dome
 {
   public:
@@ -415,7 +414,6 @@ class AshDome : public INDI::Dome
 
     virtual const char *getDefaultName() override;
     virtual bool initProperties() override;
-    virtual bool serialSetup(int);
     virtual bool updateProperties() override;
     virtual bool saveConfigItems(FILE *fp) override;
 
