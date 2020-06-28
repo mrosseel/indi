@@ -27,25 +27,31 @@
 
 #include <termios.h>
 
-#define ASHDOME_TIMEOUT 2
-#define ASHDOME_MAX_READS 10
+// for usleep
+#include <unistd.h>
+
+#define ASHDOME_TIMEOUT 10
+#define ASHDOME_MAX_READS 2
 
 static const uint8_t header = 0xaa;
 
 bool AshDomeSerial::detect()
 {
-    LOG_INFO("AshDomeSerial::detect -\> Detect");
+    LOG_DEBUG("AshDomeSerial::detect -\> Detect");
 
-    uint8_t reply = 0;
+    uint8_t reply;
     int rc = -1;
     AshDomeCommand cmd;
-    LOGF_DEBUG("Detect with cmd %d", ConnectionTest);
-    rc = write(ConnectionTest);
-    LOGF_DEBUG("write rc: %d", rc);
+    // LOGF_INFO("Detect with cmd %d", Ping);
+    rc = write(Ping);
+    // LOGF_INFO("write rc: %d", rc);
+    usleep((useconds_t)1000000); // 1s
+
     rc = readBuf(cmd, 1, (uint8_t *)&reply);
-    LOGF_INFO("read rc: %d, cmd %d, reply 0x%x", rc, reply);
-    bool answer = reply == ConnectionTest;
-    LOGF_INFO("AshDomeSerial::detect -> reply:%x, connectiontest:%x, %i", reply, ConnectionTest, answer);
+    return true;
+    // LOGF_INFO("read rc: %d, cmd %d, reply 0x%x", rc, reply);
+    bool answer = reply == Ping;
+    LOGF_INFO("AshDomeSerial::detect -> reply:%x, connectiontest:%x, %i", reply, Ping, answer);
     return answer;
 }
 
@@ -101,7 +107,8 @@ int AshDomeSerial::readBuf(AshDomeCommand &cmd, uint8_t len, uint8_t *buff)
     int nbytes_read = 0, rc = -1;
     int BytesToRead = len;
     char errstr[MAXRBUF];
-
+    LOGF_DEBUG("Start %s. Cmd: %d, port:%d", errstr, prevcmd, PortFD);
+    tty_set_debug(1);
     // Read buffer
     if ((rc = tty_read(PortFD, (char *)buff, len, ASHDOME_TIMEOUT, &nbytes_read)) != TTY_OK)
     {
@@ -109,7 +116,7 @@ int AshDomeSerial::readBuf(AshDomeCommand &cmd, uint8_t len, uint8_t *buff)
         LOGF_ERROR("Error reading: %s. Cmd: %d", errstr, prevcmd);
         // return rc;
     }
-    LOGF_DEBUG("bytes read: %d, buff: %s", nbytes_read, buff[len]);
+    //LOGF_INFO("bytes read: %d, buff: %s", nbytes_read, buff[len]);
     return rc;
 }
 

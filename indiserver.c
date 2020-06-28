@@ -72,6 +72,14 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 
+// added by Mike for stacktracing
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+// added by Mike for stacktracing
+
 #define INDIPORT      7624    /* default TCP/IP port to listen */
 #define REMOTEDVR     (-1234) /* invalid PID to flag remote drivers */
 #define MAXSBUF       512
@@ -1409,8 +1417,9 @@ static int stderrFromDriver(DvrInfo *dp)
     {
         if (nr < 0)
             fprintf(stderr, "%s: Driver %s: stderr %s\n", indi_tstamp(NULL), dp->name, strerror(errno));
-        else
+        else {
             fprintf(stderr, "%s: Driver %s: stderr EOF\n", indi_tstamp(NULL), dp->name);
+        }
         shutdownDvr(dp, 1);
         return (-1);
     }

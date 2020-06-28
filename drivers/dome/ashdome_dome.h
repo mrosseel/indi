@@ -44,7 +44,7 @@ typedef enum
     MotionConflict,
     ParamError,
     FuncBufferError,
-    ConnectionTest = 65,
+    Ping = 65, // 0x41, A
     SetAllDigital,
     ClearDigitalChannel,
     ClearAllDigital,
@@ -52,8 +52,9 @@ typedef enum
     GetDigitalChannel,
     GetAllDigital,
 
-    GetCounter,
-    ResetCounter,
+    GetCounter = 80, // 0x50, P
+    ResetCounter = 82, // 0x52, R
+    GetTurns = 84, // 0x54, T
     SetCounterDebounceTime,
     SetCounterMax,
     GetCounterMax,
@@ -498,7 +499,8 @@ class AshDome : public INDI::Dome
     uint8_t digitalSensorState[5];
     uint16_t currentStatus;
     int32_t currentRotation;
-    int16_t rotationCounter;
+    uint16_t rotationCounter;
+    uint16_t turnsCounter;
 
     uint8_t linkStrength;
     float sensors[9];

@@ -22,13 +22,13 @@
 #include "indilogger.h"
 
 
-####### added by Mike for stacktracing
+// added by Mike for stacktracing
 #include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
-####### added by Mike for stacktracing
+// added by Mike for stacktracing
 
 
 
@@ -243,7 +243,8 @@ bool Serial::Connect()
 
 bool Serial::processHandshake()
 {
-    LOG_DEBUG("Connection successful, attempting handshake...");
+    LOG_INFO("Connection successful, attempting handshake...");
+    LOGF_INFO("Connection successful, attempting handshake with port %d...", PortFD);
     bool rc = Handshake();
     if (rc)
     {
@@ -291,7 +292,6 @@ bool Serial::Connect(const char *port, uint32_t baud)
         return false;
     }
 
-    LOGF_DEBUG("Port FD %d", PortFD);
     LOGF_INFO("Serial::Connect OK, FD: %d", PortFD);
     return true;
 }

@@ -43,6 +43,14 @@
 #include <wordexp.h>
 #include <unistd.h>
 
+// added by Mike for stacktracing
+#include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+// added by Mike for stacktracing
+
 using namespace std;
 
 // We declare an auto pointer to AshDome.
@@ -90,7 +98,6 @@ void ISSnoopDevice(XMLEle *root)
 
 AshDome::AshDome()
 {
-    int fd;
     setVersion(1, 0);
     targetAz         = 0;
     shutterState     = SHUTTER_UNKNOWN;
@@ -154,7 +161,7 @@ AshDome::AshDome()
     // LOG_INFO("fd is " + fd);
     // serialPuts(fd,"hi dear");
     // LOG_INFO("Serial setup done.");
-    fd = serialConnection->getPortFD();    
+    // fd = serialConnection->getPortFD();    
     LOG_INFO("Startup Done.");
 }
 
@@ -255,16 +262,21 @@ bool AshDome::initProperties()
     IUFillSwitchVector(&StartCalibrationSP, StartCalibrationS, 1, getDeviceName(), "RUN_CALIBRATION", "Run calibration",
                        SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
 
+    // IText PortT[1] {};
+    // IUFillText(&PortT[0], "PORT", "Port", "/dev/serial0");
+    // IUFillTextVector(&PortTP, PortT, 1, dev->getDeviceName(), INDI::SP::DEVICE_PORT, "Ports", CONNECTION_TAB, IP_RW, 60, IPS_IDLE);
+
     SetParkDataType(PARK_AZ);
 
-    addAuxControls();
+    // addAuxControls();
     addDebugControl();
     addSimulationControl();
-    addConfigurationControl();
-    addPollPeriodControl();
+    // addConfigurationControl();
+    // addPollPeriodControl();
     // Set serial parameters
     serialConnection->setDefaultBaudRate(Connection::Serial::B_9600);
-    reconnect();
+    serialConnection->setDefaultPort("/dev/serial0");
+    // reconnect();
 
     LOG_INFO("INitproperties Done.");
     return true;
@@ -504,10 +516,12 @@ bool AshDome::Ack()
     }
     else
     {
+        LOGF_INFO("Before Getting portfd: %d", PortFD);
+        PortFD = serialConnection->getPortFD();
         // TODO, detect card version and instantiate correct one
+        LOGF_INFO("Starting AshdomeSerial with port f: %d", PortFD);
         interface.reset(static_cast<AshDomeCard *>(new AshDomeSerial(PortFD)));
     }
-
     return interface->detect();
 }
 
@@ -587,12 +601,11 @@ bool AshDome::UpdateShutterStatus()
 * ***********************************************************************************/
 bool AshDome::UpdatePosition()
 {
-    LOG_INFO("TODO UpdatePosition");
-    return true;
+    LOG_INFO("In UpdatePosition");
     //    int counter = readS32(GetCounterExt);
-    readS16(GetCounter, rotationCounter);
+    readU16(GetCounter, rotationCounter);
 
-    //    LOGF_INFO("Counters are %d - %d", counter, counter2);
+    LOGF_INFO("Counters are %d", rotationCounter);
 
     // We assume counter value 0 is at home sensor position
     double az = ((double)rotationCounter * -360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
@@ -676,8 +689,8 @@ void AshDome::TimerHit()
 
     UpdateRelayStatus();
 
-    LOG_INFO("TimerHit is exiting early");
-    return;
+    /* LOG_INFO("TimerHit is exiting early, because Mike put a return here"); */
+    /* return; */
 
     if (status == DOME_HOMING)
     {
@@ -1267,10 +1280,14 @@ void AshDome::reconnect()
     LOG_INFO("AshDome::reconnect -> Reconnecting serial port");
     // Reconnect serial port after write error
     serialConnection->Disconnect();
-    usleep(1000000); // 1s
+    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 1");
+    // usleep((useconds_t)1000000); // 1s
+    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 2");
+    serialConnection->setDefaultPort("/dev/serial0");
     serialConnection->Connect();
+    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 3");
     PortFD = serialConnection->getPortFD();
-    LOG_INFO("AshDome::reconnect -> Reconnected.");
+    LOGF_INFO("AshDome::reconnect -> Reconnected on %d.", PortFD);
 }
 
 ISState AshDome::getInputState(AshDomeDigitalIO channel)
