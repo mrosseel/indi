@@ -35,7 +35,9 @@
 #include "connectionplugins/connectionserial.h"
 #include "indicom.h"
 
+#include <bits/stdint-uintn.h>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <termios.h>
@@ -124,7 +126,6 @@ AshDome::AshDome()
             fseek(inertia, 3, SEEK_SET);
             char line[100];
             int lineNum = 0;
-
             while (fgets(line, sizeof(line), inertia))
             {
                 int step, result;
@@ -602,13 +603,16 @@ bool AshDome::UpdateShutterStatus()
 bool AshDome::UpdatePosition()
 {
     LOG_INFO("In UpdatePosition");
-    //    int counter = readS32(GetCounterExt);
-    readU16(GetCounter, rotationCounter);
-
-    LOGF_INFO("Counters are %d", rotationCounter);
+    readU16(GetPosition, positionCounter);
+    readU16(GetTurns, turnsCounter);
+    bool positionChecksum = check_checksum(positionCounter);
+    bool turnsChecksum = check_checksum(turnsCounter);
+    uint16_t positionResult = get_result(positionCounter);
+    uint16_t turnsResult = get_result(turnsCounter);
+    LOGF_INFO("Counters are pos:%d, turns:%d, checksum: %d,%d", positionResult,turnsResult, positionChecksum, turnsChecksum);
 
     // We assume counter value 0 is at home sensor position
-    double az = ((double)rotationCounter * -360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
+    double az = ((double)positionCounter * -360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
     az        = fmod(az, 360.0);
     if (az < 0.0)
     {
@@ -680,7 +684,7 @@ void AshDome::TimerHit()
     if (!isConnected())
         return; //  No need to reset timer if we are not connected anymore
 
-    readU16(GetStatus, currentStatus);
+    /* readU16(GetStatus, currentStatus); */
     // LOGF_INFO("Status: %x", currentStatus);
     UpdatePosition();
 
@@ -1280,12 +1284,9 @@ void AshDome::reconnect()
     LOG_INFO("AshDome::reconnect -> Reconnecting serial port");
     // Reconnect serial port after write error
     serialConnection->Disconnect();
-    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 1");
     // usleep((useconds_t)1000000); // 1s
-    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 2");
     serialConnection->setDefaultPort("/dev/serial0");
     serialConnection->Connect();
-    LOG_INFO("AshDome::reconnect -> Reconnecting serial port 3");
     PortFD = serialConnection->getPortFD();
     LOGF_INFO("AshDome::reconnect -> Reconnected on %d.", PortFD);
 }
@@ -1428,4 +1429,44 @@ uint16_t AshDome::compensateInertia(uint16_t steps)
         return 0;
 
     return movement;
+}
+
+uint16_t AshDome::get_result(uint16_t full_response)
+{
+    // 0011111111111111 mask and shift because 12 bit
+    return (full_response & 0x3FFF) >> 2; 
+}
+
+bool AshDome::check_checksum(uint16_t word)
+{
+    /* Odd:   K1 = !(H5^H3^H1^L7^L5^L3^L1) */
+    /* Even:  K0 = !(H4^H2^H0^L6^L4^L2^L0) */
+
+    /* From the above response 0x61AB: */
+    /* Odd:   0 = !(1^0^0^1^1^1^1) = correct */
+    /* Even:  1 = !(0^0^1^0^0^0^1) = correct */
+
+    /* example: */
+    /*     HIGH     LOW */
+    /*     01100001 10101011 */
+    /*     76543210 76543210 */
+    /*     FEDCBA98 76543210 */
+
+    /*     H5^H3^H1^L7^L5^L3^L1 */
+    /* K1: 13 ^ 11 ^ 9 ^ 7 ^ 5 ^ 3 ^ 1 */
+
+    /*     H4^H2^H0^L6^L4^L2^L0 */
+    /* K0: 12 ^ 10 ^ 8 ^ 6 ^ 4 ^ 2 ^ 0 */
+
+    bool k1 = word >> 15 & 1;
+    bool k0 = word >> 14 & 1;
+    bool k1_result = !((word >> 13 & 1) ^ (word >> 11 & 1) ^ (word >> 9 & 1) ^
+                       (word >> 7 & 1) ^ (word >> 5 & 1) ^ (word >> 3 & 1) ^
+                       (word >> 1 & 1));
+    bool k0_result = !((word >> 12 & 1) ^ (word >> 10 & 1) ^ (word >> 8 & 1) ^
+                       (word >> 6 & 1) ^ (word >> 4 & 1) ^ (word >> 2 & 1) ^
+                       (word >> 0 & 1));
+    bool correct = k1_result == k1 and k0_result == k0;
+    LOGF_INFO("k1: %d, K1_result: %d, k0: %d, k0_result: %d, correct: %d",k1, k1_result, k0, k0_result, correct);
+    return correct;
 }

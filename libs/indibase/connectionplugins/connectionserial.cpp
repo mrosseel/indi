@@ -243,8 +243,7 @@ bool Serial::Connect()
 
 bool Serial::processHandshake()
 {
-    LOG_INFO("Connection successful, attempting handshake...");
-    LOGF_INFO("Connection successful, attempting handshake with port %d...", PortFD);
+    LOGF_DEBUG("Connection successful, attempting handshake with port %d...", PortFD);
     bool rc = Handshake();
     if (rc)
     {

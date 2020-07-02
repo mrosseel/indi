@@ -44,7 +44,7 @@ typedef enum
     MotionConflict,
     ParamError,
     FuncBufferError,
-    Ping = 65, // 0x41, A
+    Ping = 0x41, // 0x41, A
     SetAllDigital,
     ClearDigitalChannel,
     ClearAllDigital,
@@ -52,9 +52,9 @@ typedef enum
     GetDigitalChannel,
     GetAllDigital,
 
-    GetCounter = 80, // 0x50, P
-    ResetCounter = 82, // 0x52, R
-    GetTurns = 84, // 0x54, T
+    GetPosition = 0x50, // 0x50, P
+    ResetCounter = 0x52, // 0x52, R
+    GetTurns = 0x54, // 0x54, T
     SetCounterDebounceTime,
     SetCounterMax,
     GetCounterMax,
@@ -499,7 +499,7 @@ class AshDome : public INDI::Dome
     uint8_t digitalSensorState[5];
     uint16_t currentStatus;
     int32_t currentRotation;
-    uint16_t rotationCounter;
+    uint16_t positionCounter;
     uint16_t turnsCounter;
 
     uint8_t linkStrength;
@@ -539,4 +539,6 @@ class AshDome : public INDI::Dome
     // Dome inertia compensation
     std::vector<uint8_t> inertiaTable;
     uint16_t compensateInertia(uint16_t steps);
+    uint16_t get_result(uint16_t full_response);
+    bool check_checksum(uint16_t word);
 };
