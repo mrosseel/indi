@@ -1339,8 +1339,7 @@ set(ashdome_SRCS
    )
 
 add_executable(indi_ashdome_dome ${ashdome_SRCS})
-find_library(WIRINGPI_LIBRARIES NAMES wiringPi)
-target_link_libraries(indi_ashdome_dome indidriver ${WIRINGPI_LIBRARIES})
+target_link_libraries(indi_ashdome_dome indidriver)
 install(TARGETS indi_ashdome_dome RUNTIME DESTINATION bin )
 
 

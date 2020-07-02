@@ -149,20 +149,6 @@ AshDome::AshDome()
         }
     }
     wordfree(&wexp);
-    // wiringPiSetup();			// Setup the library
-    // pinMode(0, OUTPUT);		// Configure GPIO11 as an output
-    // pinMode(1, OUTPUT);		// Configure GPIO12 as an output
-    // LOG_INFO("DigitalWrite before" + digitalRead(0));
-    // digitalWrite(0, true);
-    // delay(1000); 	// Delay 500ms
-    // digitalWrite(0, false);
-    // delay(1000); 	// Delay 500ms
-    // LOG_INFO("Serial setup");
-    // fd = serialSetup(9600);
-    // LOG_INFO("fd is " + fd);
-    // serialPuts(fd,"hi dear");
-    // LOG_INFO("Serial setup done.");
-    // fd = serialConnection->getPortFD();    
     LOG_INFO("Startup Done.");
 }
 
