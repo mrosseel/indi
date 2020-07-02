@@ -35,7 +35,7 @@
 #include "connectionplugins/connectionserial.h"
 #include "indicom.h"
 
-#include <bits/stdint-uintn.h>
+/* #include <bits/stdint-uintn.h> */
 #include <cmath>
 #include <cstdint>
 #include <cstring>
