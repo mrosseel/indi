@@ -37,7 +37,7 @@ static const uint8_t header = 0xaa;
 
 bool AshDomeSerial::detect()
 {
-    LOG_DEBUG("AshDomeSerial::detect -\> Detect");
+    LOG_DEBUG("AshDomeSerial::detect");
 
     uint8_t reply;
     int rc = -1;

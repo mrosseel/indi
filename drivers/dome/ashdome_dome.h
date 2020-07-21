@@ -492,6 +492,9 @@ class AshDome : public INDI::Dome
     ISwitch StartCalibrationS[1];
     ISwitchVectorProperty StartCalibrationSP;
 
+    ISwitch EncoderResetS[1];
+    ISwitchVectorProperty EncoderResetSP;
+
     INumber FirmwareVersionsN[2];
     INumberVectorProperty FirmwareVersionsNP;
 
@@ -510,6 +513,7 @@ class AshDome : public INDI::Dome
     std::unique_ptr<AshDomeCard> interface;
 
     void reconnect();
+    void Reset();
 
     IPState sendMove(double azDiff);
 
@@ -522,7 +526,6 @@ class AshDome : public INDI::Dome
     bool readU32(AshDomeCommand cmd, uint32_t &dst);
     bool readS32(AshDomeCommand cmd, int32_t &dst);
     int readBuffer(AshDomeCommand cmd, int len, uint8_t *cbuf);
-
     int writeCmd(AshDomeCommand cmd);
     int writeU8(AshDomeCommand cmd, uint8_t value);
     int writeU16(AshDomeCommand cmd, uint16_t value);

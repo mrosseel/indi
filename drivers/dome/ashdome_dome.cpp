@@ -34,8 +34,10 @@
 
 #include "connectionplugins/connectionserial.h"
 #include "indicom.h"
+#include "indilogger.h"
 
 /* #include <bits/stdint-uintn.h> */
+#include <bits/stdint-uintn.h>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -249,6 +251,10 @@ bool AshDome::initProperties()
     IUFillSwitchVector(&StartCalibrationSP, StartCalibrationS, 1, getDeviceName(), "RUN_CALIBRATION", "Run calibration",
                        SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
 
+    IUFillSwitch(&EncoderResetS[0], "RESET", "Encoder reset", ISS_OFF);
+    IUFillSwitchVector(&EncoderResetSP, EncoderResetS, 1, getDeviceName(), "RUN_ENCODER_RESET", "Run encoder reset",
+                       SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
+
     // IText PortT[1] {};
     // IUFillText(&PortT[0], "PORT", "Port", "/dev/serial0");
     // IUFillTextVector(&PortTP, PortT, 1, dev->getDeviceName(), INDI::SP::DEVICE_PORT, "Ports", CONNECTION_TAB, IP_RW, 60, IPS_IDLE);
@@ -366,6 +372,7 @@ bool AshDome::updateProperties()
         defineNumber(&StepsPerRevolutionNP);
         defineSwitch(&CalibrationNeededSP);
         defineSwitch(&StartCalibrationSP);
+        defineSwitch(&EncoderResetSP);
         defineNumber(&FirmwareVersionsNP);
         SetupParms();
     }
@@ -383,6 +390,7 @@ bool AshDome::updateProperties()
         deleteProperty(StepsPerRevolutionNP.name);
         deleteProperty(CalibrationNeededSP.name);
         deleteProperty(StartCalibrationSP.name);
+        deleteProperty(EncoderResetSP.name);
         deleteProperty(FirmwareVersionsNP.name);
     }
 
@@ -436,6 +444,21 @@ bool AshDome::ISNewSwitch(const char *dev, const char *name, ISState *states, ch
                 StartCalibrationSP.s = IPS_BUSY;
                 IDSetSwitch(&StartCalibrationSP, nullptr);
                 writeCmd(FullSystemCal);
+            }
+            return true;
+        }
+
+        if (strcmp(name, EncoderResetSP.name) == 0)
+        {
+            if (status != DOME_CALIBRATING)
+            {
+                LOG_INFO("Reset started");
+                status = DOME_CALIBRATING;
+                IUResetSwitch(&EncoderResetSP);
+                DomeAbsPosNP.s       = IPS_BUSY;
+                EncoderResetSP.s = IPS_BUSY;
+                IDSetSwitch(&EncoderResetSP, nullptr);
+                Reset();
             }
             return true;
         }
@@ -591,6 +614,7 @@ bool AshDome::UpdatePosition()
     LOG_INFO("In UpdatePosition");
     readU16(GetPosition, positionCounter);
     readU16(GetTurns, turnsCounter);
+    LOGF_INFO("Raw position: %d, raw turn: %d", positionCounter, turnsCounter);
     bool positionChecksum = check_checksum(positionCounter);
     bool turnsChecksum = check_checksum(turnsCounter);
     uint16_t positionResult = get_result(positionCounter);
@@ -598,16 +622,21 @@ bool AshDome::UpdatePosition()
     LOGF_INFO("Counters are pos:%d, turns:%d, checksum: %d,%d", positionResult,turnsResult, positionChecksum, turnsChecksum);
 
     // We assume counter value 0 is at home sensor position
-    double az = ((double)positionCounter * -360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
-    az        = fmod(az, 360.0);
-    if (az < 0.0)
-    {
-        az += 360.0;
+    double az = ((double)positionCounter * 360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
+    az = fmod(az, 360.0);
+    if (az < 0.0) {
+      az += 360.0;
     }
     DomeAbsPosN[0].value = az;
     return true;
 }
 
+void AshDome::Reset()
+{
+    LOG_INFO("In Reset");
+    uint8_t dummy = '\0';
+    writeU8(ResetCounter, dummy);
+}
 /************************************************************************************
  *
 * ***********************************************************************************/
