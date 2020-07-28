@@ -612,9 +612,9 @@ bool AshDome::UpdateShutterStatus()
 bool AshDome::UpdatePosition()
 {
     LOG_INFO("In UpdatePosition");
-    readU16(GetPosition, positionCounter);
-    readU16(GetTurns, turnsCounter);
-    LOGF_INFO("Raw position: %d, raw turn: %d", positionCounter, turnsCounter);
+    bool pos = readU16(GetPosition, positionCounter);
+    bool turns = readU16(GetTurns, turnsCounter);
+    LOGF_INFO("Raw position: %d, raw turn: %d, poscode:%d turncode:%d", positionCounter, turnsCounter, pos, turns);
     bool positionChecksum = check_checksum(positionCounter);
     bool turnsChecksum = check_checksum(turnsCounter);
     uint16_t positionResult = get_result(positionCounter);
@@ -702,11 +702,12 @@ void AshDome::TimerHit()
     /* readU16(GetStatus, currentStatus); */
     // LOGF_INFO("Status: %x", currentStatus);
     UpdatePosition();
-
+    /* usleep((useconds_t)10000000); // 10s */
     UpdateShutterStatus();
     IDSetSwitch(&DomeShutterSP, nullptr);
 
     UpdateRelayStatus();
+    /* exit(-1); */
 
     /* LOG_INFO("TimerHit is exiting early, because Mike put a return here"); */
     /* return; */
@@ -1143,6 +1144,7 @@ bool AshDome::readU16(AshDomeCommand cmd, uint16_t &dst)
         if (rc == 0)
             rc = interface->readBuf(c, 2, (uint8_t *)&value);
         else
+            LOG_ERROR("readU16: reconnecting");
             reconnect();
     } while (rc != 0 && --retryCount);
     //    LOGF_ERROR("readU16: %d %x", cmd, value);
@@ -1449,7 +1451,7 @@ uint16_t AshDome::compensateInertia(uint16_t steps)
 uint16_t AshDome::get_result(uint16_t full_response)
 {
     // 0011111111111111 mask and shift because 12 bit
-    return (full_response & 0x3FFF) >> 2; 
+    return (full_response & 0x3FFF) >> 2;
 }
 
 bool AshDome::check_checksum(uint16_t word)
