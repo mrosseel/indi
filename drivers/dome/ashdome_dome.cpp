@@ -35,8 +35,6 @@
 #include "connectionplugins/connectionserial.h"
 #include "indicom.h"
 #include "indilogger.h"
-
-/* #include <bits/stdint-uintn.h> */
 #include <bits/stdint-uintn.h>
 #include <cmath>
 #include <cstdint>
@@ -104,8 +102,8 @@ AshDome::AshDome()
 {
     setVersion(1, 0);
     targetAz         = 0;
-    shutterState     = SHUTTER_UNKNOWN;
-    simShutterStatus = SHUTTER_CLOSED; // delete?
+    m_ShutterState     = SHUTTER_UNKNOWN;
+    simShutterStatus = SHUTTER_CLOSED; 
 
     status        = DOME_UNKNOWN;
     targetShutter = SHUTTER_CLOSE;
@@ -114,7 +112,7 @@ AshDome::AshDome()
     // SetDomeConnection(CONNECTION_SERIAL | CONNECTION_NONE);
     SetDomeCapability(DOME_CAN_ABORT | DOME_CAN_ABS_MOVE | DOME_CAN_REL_MOVE | DOME_CAN_PARK | DOME_HAS_SHUTTER);
 
-    stepsPerTurn = -1;
+    stepsPerTurn = 110592000;
 
     LOG_INFO("In Startup.");
     // Load dome inertia table if present
@@ -178,7 +176,7 @@ bool AshDome::initProperties()
                        ISR_ATMOST1, 0, IPS_OK);
 
     IUFillSwitch(&PowerRelaysS[0], "CCD", "CCD", ISS_OFF);
-    IUFillSwitch(&PowerRelaysS[1], "SCOPE", "Teletre", ISS_OFF);
+    IUFillSwitch(&PowerRelaysS[1], "SCOPE", "Telescope", ISS_OFF);
     IUFillSwitch(&PowerRelaysS[2], "LIGHT", "Light", ISS_OFF);
     IUFillSwitch(&PowerRelaysS[3], "FAN", "Fan", ISS_OFF);
     IUFillSwitchVector(&PowerRelaysSP, PowerRelaysS, 4, getDeviceName(), "POWER_RELAYS", "Power relays",
@@ -243,17 +241,11 @@ bool AshDome::initProperties()
     IUFillNumberVector(&StepsPerRevolutionNP, StepsPerRevolutionN, 1, getDeviceName(), "CALIBRATION_VALUES",
                        "Calibration values", SITE_TAB, IP_RO, 60, IPS_IDLE);
 
-    IUFillSwitch(&CalibrationNeededS[0], "CALIBRATION_NEEDED", "Calibration needed", ISS_OFF);
-    IUFillSwitchVector(&CalibrationNeededSP, CalibrationNeededS, 1, getDeviceName(), "CALIBRATION_STATUS",
-                       "Calibration status", SITE_TAB, IP_RO, ISR_ATMOST1, 0, IPS_IDLE);
 
-    IUFillSwitch(&StartCalibrationS[0], "START", "Start", ISS_OFF);
-    IUFillSwitchVector(&StartCalibrationSP, StartCalibrationS, 1, getDeviceName(), "RUN_CALIBRATION", "Run calibration",
-                       SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
 
-    IUFillSwitch(&EncoderResetS[0], "RESET", "Encoder reset", ISS_OFF);
-    IUFillSwitchVector(&EncoderResetSP, EncoderResetS, 1, getDeviceName(), "RUN_ENCODER_RESET", "Run encoder reset",
-                       SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
+    /* IUFillSwitch(&EncoderResetS[0], "RESET", "Encoder reset", ISS_OFF); */
+    /* IUFillSwitchVector(&EncoderResetSP, EncoderResetS, 1, getDeviceName(), "RUN_ENCODER_RESET", "Run encoder reset", */
+    /*                    SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK); */
 
     // IText PortT[1] {};
     // IUFillText(&PortT[0], "PORT", "Port", "/dev/serial0");
@@ -261,9 +253,9 @@ bool AshDome::initProperties()
 
     SetParkDataType(PARK_AZ);
 
-    // addAuxControls();
-    addDebugControl();
-    addSimulationControl();
+    addAuxControls();
+    /* addDebugControl(); */
+    /* addSimulationControl(); */
     // addConfigurationControl();
     // addPollPeriodControl();
     // Set serial parameters
@@ -281,46 +273,46 @@ bool AshDome::initProperties()
 bool AshDome::SetupParms()
 {
     LOG_INFO("TODO SetupParams");
-    return true;
-    targetAz = 0;
+    /* return true; */
+    /* targetAz = 0; */
 
-    readU32(GetImpPerTurn, stepsPerTurn);
-    LOGF_INFO("Steps per turn read as %d", stepsPerTurn);
-    StepsPerRevolutionN[0].value = stepsPerTurn;
-    StepsPerRevolutionNP.s       = IPS_OK;
-    IDSetNumber(&StepsPerRevolutionNP, nullptr);
+    /* readU32(GetImpPerTurn, stepsPerTurn); */
+    /* LOGF_INFO("Steps per turn read as %d", stepsPerTurn); */
+    /* StepsPerRevolutionN[0].value = stepsPerTurn; */
+    /* StepsPerRevolutionNP.s       = IPS_OK; */
+    /* IDSetNumber(&StepsPerRevolutionNP, nullptr); */
 
-    readS32(GetHomeSensorPosition, homePosition);
-    LOGF_INFO("Home position read as %d", homePosition);
+    /* readS32(GetHomeSensorPosition, homePosition); */
+    /* LOGF_INFO("Home position read as %d", homePosition); */
 
-    if (UpdatePosition())
-        IDSetNumber(&DomeAbsPosNP, nullptr);
+    /* if (UpdatePosition()) */
+    /*     IDSetNumber(&DomeAbsPosNP, nullptr); */
 
-    if (UpdateShutterStatus())
-        IDSetSwitch(&DomeShutterSP, nullptr);
+    /* if (UpdateShutterStatus()) */
+    /*     IDSetSwitch(&DomeShutterSP, nullptr); */
 
-    UpdateSensorStatus();
-    UpdateRelayStatus();
+    /* UpdateSensorStatus(); */
+    /* UpdateRelayStatus(); */
 
-    if (InitPark())
-    {
-        // If loading parking data is successful, we just set the default parking
-        // values.
-        SetAxis1ParkDefault(0);
-    }
-    else
-    {
-        // Otherwise, we set all parking data to default in case no parking data is
-        // found.
-        SetAxis1Park(0);
-        SetAxis1ParkDefault(0);
-    }
+    /* if (InitPark()) */
+    /* { */
+    /*     // If loading parking data is successful, we just set the default parking */
+    /*     // values. */
+    /*     SetAxis1ParkDefault(0); */
+    /* } */
+    /* else */
+    /* { */
+    /*     // Otherwise, we set all parking data to default in case no parking data is */
+    /*     // found. */
+    /*     SetAxis1Park(0); */
+    /*     SetAxis1ParkDefault(0); */
+    /* } */
 
-    uint8_t calibrationNeeded = false;
-    readU8(IsFullSystemCalReq, calibrationNeeded);
-    CalibrationNeededS[0].s = calibrationNeeded ? ISS_ON : ISS_OFF;
-    CalibrationNeededSP.s   = IPS_OK;
-    IDSetSwitch(&CalibrationNeededSP, nullptr);
+    /* uint8_t calibrationNeeded = false; */
+    /* readU8(IsFullSystemCalReq, calibrationNeeded); */
+    /* CalibrationNeededS[0].s = calibrationNeeded ? ISS_ON : ISS_OFF; */
+    /* CalibrationNeededSP.s   = IPS_OK; */
+    /* IDSetSwitch(&CalibrationNeededSP, nullptr); */
 
     // uint16_t fwVersion;
     // readU16(GetVersionFirmware, fwVersion);
@@ -331,6 +323,7 @@ bool AshDome::SetupParms()
     // FirmwareVersionsN[1].value = (fwVersionRotary + 9) / 10.0;
     // FirmwareVersionsNP.s       = IPS_OK;
     // IDSetNumber(&FirmwareVersionsNP, nullptr);
+    tty_set_debug(0);
     LOG_INFO("SetupParams");
     return true;
 }
@@ -370,8 +363,6 @@ bool AshDome::updateProperties()
         defineSwitch(&SensorsSP);
         defineSwitch(&ParkShutterSP);
         defineNumber(&StepsPerRevolutionNP);
-        defineSwitch(&CalibrationNeededSP);
-        defineSwitch(&StartCalibrationSP);
         defineSwitch(&EncoderResetSP);
         defineNumber(&FirmwareVersionsNP);
         SetupParms();
@@ -388,8 +379,6 @@ bool AshDome::updateProperties()
         deleteProperty(EnvironmentSensorsNP.name);
         deleteProperty(ParkShutterSP.name);
         deleteProperty(StepsPerRevolutionNP.name);
-        deleteProperty(CalibrationNeededSP.name);
-        deleteProperty(StartCalibrationSP.name);
         deleteProperty(EncoderResetSP.name);
         deleteProperty(FirmwareVersionsNP.name);
     }
@@ -402,6 +391,7 @@ bool AshDome::updateProperties()
 * ***********************************************************************************/
 bool AshDome::ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n)
 {
+    LOGF_INFO("New switch %s, %d, %s, %s, %s", names, n,states,name, dev);
     if (dev != nullptr && strcmp(dev, getDeviceName()) == 0)
     {
         if (strcmp(name, FindHomeSP.name) == 0)
@@ -429,21 +419,6 @@ bool AshDome::ISNewSwitch(const char *dev, const char *name, ISState *states, ch
                 DomeAbsPosNP.s = IPS_BUSY;
                 DerotateSP.s   = IPS_BUSY;
                 IDSetSwitch(&DerotateSP, nullptr);
-            }
-            return true;
-        }
-
-        if (strcmp(name, StartCalibrationSP.name) == 0)
-        {
-            if (status != DOME_CALIBRATING)
-            {
-                LOG_INFO("Calibration started");
-                status = DOME_CALIBRATING;
-                IUResetSwitch(&StartCalibrationSP);
-                DomeAbsPosNP.s       = IPS_BUSY;
-                StartCalibrationSP.s = IPS_BUSY;
-                IDSetSwitch(&StartCalibrationSP, nullptr);
-                writeCmd(FullSystemCal);
             }
             return true;
         }
@@ -573,11 +548,11 @@ bool AshDome::UpdateShutterStatus()
 
     if (getInputState(IN_OPEN1) == ISS_ON) // shutter open switch triggered
     {
-        if (shutterState == SHUTTER_MOVING && targetShutter == SHUTTER_OPEN)
+        if (m_ShutterState == SHUTTER_MOVING && targetShutter == SHUTTER_OPEN)
         {
             LOGF_INFO("%s", GetShutterStatusString(SHUTTER_OPENED));
             setOutputState(OUT_OPEN1, ISS_OFF);
-            shutterState = SHUTTER_OPENED;
+            m_ShutterState = SHUTTER_OPENED;
             if (getDomeState() == DOME_UNPARKING)
                 SetParked(false);
         }
@@ -585,11 +560,11 @@ bool AshDome::UpdateShutterStatus()
     }
     else if (getInputState(IN_CLOSED1) == ISS_ON) // shutter closed switch triggered
     {
-        if (shutterState == SHUTTER_MOVING && targetShutter == SHUTTER_CLOSE)
+        if (m_ShutterState == SHUTTER_MOVING && targetShutter == SHUTTER_CLOSE)
         {
             LOGF_INFO("%s", GetShutterStatusString(SHUTTER_CLOSED));
             setOutputState(OUT_CLOSE1, ISS_OFF);
-            shutterState = SHUTTER_CLOSED;
+            m_ShutterState = SHUTTER_CLOSED;
 
             if (getDomeState() == DOME_PARKING && DomeAbsPosNP.s != IPS_BUSY)
             {
@@ -600,7 +575,7 @@ bool AshDome::UpdateShutterStatus()
     }
     else
     {
-        shutterState    = SHUTTER_MOVING;
+        m_ShutterState    = SHUTTER_MOVING;
         DomeShutterSP.s = IPS_BUSY;
     }
     return true;
@@ -614,20 +589,20 @@ bool AshDome::UpdatePosition()
     LOG_INFO("In UpdatePosition");
     bool pos = readU16(GetPosition, positionCounter);
     bool turns = readU16(GetTurns, turnsCounter);
-    LOGF_INFO("Raw position: %d, raw turn: %d, poscode:%d turncode:%d", positionCounter, turnsCounter, pos, turns);
+    LOGF_DEBUG("Raw position: %d, raw turn: %d, poscode:%d turncode:%d", positionCounter, turnsCounter, pos, turns);
     bool positionChecksum = check_checksum(positionCounter);
     bool turnsChecksum = check_checksum(turnsCounter);
     uint16_t positionResult = get_result(positionCounter);
     uint16_t turnsResult = get_result(turnsCounter);
-    LOGF_INFO("Counters are pos:%d, turns:%d, checksum: %d,%d", positionResult,turnsResult, positionChecksum, turnsChecksum);
 
     // We assume counter value 0 is at home sensor position
-    double az = ((double)positionCounter * 360.0 / stepsPerTurn) + DomeHomePositionN[0].value;
+    double az = ((double)turnsResult*stepsPerTurn + (double)positionConter) / stepsPerTurn + DomeHomePositionN[0].value;
     az = fmod(az, 360.0);
     if (az < 0.0) {
       az += 360.0;
     }
     DomeAbsPosN[0].value = az;
+    LOGF_INFO("Encoder pos:%d, turns:%d, AZ: %f, stepsPerTurn: %d, checksum: (%d,%d)", positionResult,turnsResult, az, stepsPerTurn, positionChecksum, turnsChecksum);
     return true;
 }
 
@@ -707,7 +682,6 @@ void AshDome::TimerHit()
     IDSetSwitch(&DomeShutterSP, nullptr);
 
     UpdateRelayStatus();
-    /* exit(-1); */
 
     /* LOG_INFO("TimerHit is exiting early, because Mike put a return here"); */
     /* return; */
@@ -778,21 +752,6 @@ void AshDome::TimerHit()
             }
         }
         IDSetNumber(&DomeAbsPosNP, nullptr);
-    }
-    else if (status == DOME_CALIBRATING)
-    {
-        if ((currentStatus & (STATUS_CALIBRATING | STATUS_MOVING)) == 0)
-        {
-            readU32(GetImpPerTurn, stepsPerTurn);
-            LOGF_INFO("Calibration complete, steps per turn read as %d", stepsPerTurn);
-            StepsPerRevolutionN[0].value = stepsPerTurn;
-            StepsPerRevolutionNP.s       = IPS_OK;
-            IDSetNumber(&StepsPerRevolutionNP, nullptr);
-            StartCalibrationSP.s = IPS_OK;
-            DomeAbsPosNP.s       = IPS_OK;
-            IDSetSwitch(&StartCalibrationSP, nullptr);
-            status = DOME_READY;
-        }
     }
     else if (DomeAbsPosNP.s == IPS_BUSY)
     {
@@ -1014,7 +973,7 @@ IPState AshDome::ControlShutter(ShutterOperation operation)
         setOutputState(OUT_CLOSE1, ISS_ON);
     }
 
-    shutterState = SHUTTER_MOVING;
+    m_ShutterState = SHUTTER_MOVING;
     return IPS_BUSY;
 }
 
@@ -1143,9 +1102,10 @@ bool AshDome::readU16(AshDomeCommand cmd, uint16_t &dst)
         rc = interface->write(cmd);
         if (rc == 0)
             rc = interface->readBuf(c, 2, (uint8_t *)&value);
-        else
-            LOG_ERROR("readU16: reconnecting");
+        else {
+            LOGF_INFO("readU16: reconnecting because rc is %d", rc);
             reconnect();
+         }
     } while (rc != 0 && --retryCount);
     //    LOGF_ERROR("readU16: %d %x", cmd, value);
     if (rc == 0)
@@ -1301,10 +1261,11 @@ void AshDome::reconnect()
     LOG_INFO("AshDome::reconnect -> Reconnecting serial port");
     // Reconnect serial port after write error
     serialConnection->Disconnect();
-    // usleep((useconds_t)1000000); // 1s
-    serialConnection->setDefaultPort("/dev/serial0");
+    usleep((useconds_t)1000000); // 1s
+    /* serialConnection->setDefaultPort("/dev/serial0"); */
     serialConnection->Connect();
     PortFD = serialConnection->getPortFD();
+    interface ->setPortFD(PortFD);
     LOGF_INFO("AshDome::reconnect -> Reconnected on %d.", PortFD);
 }
 
@@ -1484,6 +1445,8 @@ bool AshDome::check_checksum(uint16_t word)
                        (word >> 6 & 1) ^ (word >> 4 & 1) ^ (word >> 2 & 1) ^
                        (word >> 0 & 1));
     bool correct = k1_result == k1 and k0_result == k0;
-    LOGF_INFO("k1: %d, K1_result: %d, k0: %d, k0_result: %d, correct: %d",k1, k1_result, k0, k0_result, correct);
+    if (!correct) {
+        LOGF_WARN("k1: %d, K1_result: %d, k0: %d, k0_result: %d, correct: %d",k1, k1_result, k0, k0_result, correct);
+    }
     return correct;
 }

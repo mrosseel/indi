@@ -41,9 +41,9 @@ bool AshDomeSerial::detect()
 
     uint8_t reply;
     int rc = -1;
-    AshDomeCommand cmd;
     // LOGF_INFO("Detect with cmd %d", Ping);
     rc = write(Ping);
+    AshDomeCommand cmd;
     // LOGF_INFO("write rc: %d", rc);
     usleep((useconds_t)1000000); // 1s
 
@@ -59,7 +59,6 @@ bool AshDomeSerial::detect()
 int AshDomeSerial::writeBuf(AshDomeCommand cmd, uint8_t len, uint8_t *buff)
 {
     int BytesToWrite   = len;
-    int BytesWritten   = 0;
     int nbytes_written = 0, rc = -1;
     char errstr[MAXRBUF];
     uint8_t cbuf[BytesToWrite];
@@ -105,7 +104,6 @@ int AshDomeSerial::write(AshDomeCommand cmd)
 int AshDomeSerial::readBuf(AshDomeCommand &cmd, uint8_t len, uint8_t *buff)
 {
     int nbytes_read = 0, rc = -1;
-    int BytesToRead = len;
     char errstr[MAXRBUF];
     LOGF_DEBUG("Start %s. Cmd: %d, port:%d", errstr, prevcmd, PortFD);
     tty_set_debug(1);

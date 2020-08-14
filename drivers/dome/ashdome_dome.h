@@ -486,11 +486,6 @@ class AshDome : public INDI::Dome
     INumber StepsPerRevolutionN[1];
     INumberVectorProperty StepsPerRevolutionNP;
 
-    ISwitch CalibrationNeededS[1];
-    ISwitchVectorProperty CalibrationNeededSP;
-
-    ISwitch StartCalibrationS[1];
-    ISwitchVectorProperty StartCalibrationSP;
 
     ISwitch EncoderResetS[1];
     ISwitchVectorProperty EncoderResetSP;
