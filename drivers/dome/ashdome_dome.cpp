@@ -112,7 +112,7 @@ AshDome::AshDome()
     // SetDomeConnection(CONNECTION_SERIAL | CONNECTION_NONE);
     SetDomeCapability(DOME_CAN_ABORT | DOME_CAN_ABS_MOVE | DOME_CAN_REL_MOVE | DOME_CAN_PARK | DOME_HAS_SHUTTER);
 
-    stepsPerTurn = 110592000;
+    stepsPerTurn = -1;
 
     LOG_INFO("In Startup.");
     // Load dome inertia table if present
@@ -272,58 +272,43 @@ bool AshDome::initProperties()
 * ***********************************************************************************/
 bool AshDome::SetupParms()
 {
-    LOG_INFO("TODO SetupParams");
-    /* return true; */
-    /* targetAz = 0; */
-
-    /* readU32(GetImpPerTurn, stepsPerTurn); */
-    /* LOGF_INFO("Steps per turn read as %d", stepsPerTurn); */
-    /* StepsPerRevolutionN[0].value = stepsPerTurn; */
-    /* StepsPerRevolutionNP.s       = IPS_OK; */
-    /* IDSetNumber(&StepsPerRevolutionNP, nullptr); */
-
+    LOG_INFO("SetupParams");
+    targetAz = 0;
+    stepsPerTurn = 4096;
+    /* stepsPerTurn = 307200; */
+    LOGF_INFO("Steps per turn read as %d", stepsPerTurn);
+    StepsPerRevolutionN[0].value = stepsPerTurn;
+    StepsPerRevolutionNP.s       = IPS_OK;
+    IDSetNumber(&StepsPerRevolutionNP, nullptr);
     /* readS32(GetHomeSensorPosition, homePosition); */
-    /* LOGF_INFO("Home position read as %d", homePosition); */
+    homePosition = 0; // TODO figure out the correct home position (az?)
+    LOGF_INFO("Home position read as %d", homePosition);
 
-    /* if (UpdatePosition()) */
-    /*     IDSetNumber(&DomeAbsPosNP, nullptr); */
+    if (UpdatePosition())
+        IDSetNumber(&DomeAbsPosNP, nullptr);
 
-    /* if (UpdateShutterStatus()) */
-    /*     IDSetSwitch(&DomeShutterSP, nullptr); */
 
-    /* UpdateSensorStatus(); */
-    /* UpdateRelayStatus(); */
+    if (UpdateShutterStatus())
+        IDSetSwitch(&DomeShutterSP, nullptr);
 
-    /* if (InitPark()) */
-    /* { */
-    /*     // If loading parking data is successful, we just set the default parking */
-    /*     // values. */
-    /*     SetAxis1ParkDefault(0); */
-    /* } */
-    /* else */
-    /* { */
-    /*     // Otherwise, we set all parking data to default in case no parking data is */
-    /*     // found. */
-    /*     SetAxis1Park(0); */
-    /*     SetAxis1ParkDefault(0); */
-    /* } */
+    UpdateSensorStatus();
+    UpdateRelayStatus();
 
-    /* uint8_t calibrationNeeded = false; */
-    /* readU8(IsFullSystemCalReq, calibrationNeeded); */
-    /* CalibrationNeededS[0].s = calibrationNeeded ? ISS_ON : ISS_OFF; */
-    /* CalibrationNeededSP.s   = IPS_OK; */
-    /* IDSetSwitch(&CalibrationNeededSP, nullptr); */
+    if (InitPark())
+    {
+        // If loading parking data is successful, we just set the default parking
+        // values.
+        SetAxis1ParkDefault(0);
+    }
+    else
+    {
+        // Otherwise, we set all parking data to default in case no parking data is
+        // found.
+        SetAxis1Park(0);
+        SetAxis1ParkDefault(0);
+    }
 
-    // uint16_t fwVersion;
-    // readU16(GetVersionFirmware, fwVersion);
-    // FirmwareVersionsN[0].value = fwVersion / 100.0;
-
-    // uint8_t fwVersionRotary;
-    // readU8(GetVersionFirmwareRotary, fwVersionRotary);
-    // FirmwareVersionsN[1].value = (fwVersionRotary + 9) / 10.0;
-    // FirmwareVersionsNP.s       = IPS_OK;
-    // IDSetNumber(&FirmwareVersionsNP, nullptr);
-    tty_set_debug(0);
+    /* tty_set_debug(0); */
     LOG_INFO("SetupParams");
     return true;
 }
@@ -586,7 +571,7 @@ bool AshDome::UpdateShutterStatus()
 * ***********************************************************************************/
 bool AshDome::UpdatePosition()
 {
-    LOG_INFO("In UpdatePosition");
+    LOG_DEBUG("In UpdatePosition");
     bool pos = readU16(GetPosition, positionCounter);
     bool turns = readU16(GetTurns, turnsCounter);
     LOGF_DEBUG("Raw position: %d, raw turn: %d, poscode:%d turncode:%d", positionCounter, turnsCounter, pos, turns);
@@ -594,10 +579,10 @@ bool AshDome::UpdatePosition()
     bool turnsChecksum = check_checksum(turnsCounter);
     uint16_t positionResult = get_result(positionCounter);
     uint16_t turnsResult = get_result(turnsCounter);
-
-    // We assume counter value 0 is at home sensor position
-    double az = ((double)turnsResult*stepsPerTurn + (double)positionConter) / stepsPerTurn + DomeHomePositionN[0].value;
-    az = fmod(az, 360.0);
+    double spt = (double)stepsPerTurn;
+    double az = fmod(((double)turnsResult*spt + (double)positionCounter)/ spt, 1)*360 - DomeHomePositionN[0].value;
+    /* LOGF_INFO("%f, %f", ((double)turnsResult*spt + (double)positionCounter)/ spt, fmod(((double)turnsResult*spt + (double)positionCounter)/ spt, spt)); */
+    /* az = fmod(az, 360.0); */
     if (az < 0.0) {
       az += 360.0;
     }

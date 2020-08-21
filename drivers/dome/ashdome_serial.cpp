@@ -106,7 +106,7 @@ int AshDomeSerial::readBuf(AshDomeCommand &cmd, uint8_t len, uint8_t *buff)
     int nbytes_read = 0, rc = -1;
     char errstr[MAXRBUF];
     LOGF_DEBUG("Start %s. Cmd: %d, port:%d", errstr, prevcmd, PortFD);
-    tty_set_debug(1);
+    tty_set_debug(0);
     // Read buffer
     if ((rc = tty_read(PortFD, (char *)buff, len, ASHDOME_TIMEOUT, &nbytes_read)) != TTY_OK)
     {
