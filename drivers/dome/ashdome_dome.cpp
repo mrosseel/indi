@@ -243,9 +243,9 @@ bool AshDome::initProperties()
 
 
 
-    /* IUFillSwitch(&EncoderResetS[0], "RESET", "Encoder reset", ISS_OFF); */
-    /* IUFillSwitchVector(&EncoderResetSP, EncoderResetS, 1, getDeviceName(), "RUN_ENCODER_RESET", "Run encoder reset", */
-    /*                    SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK); */
+    IUFillSwitch(&EncoderResetS[0], "RESET", "Encoder reset", ISS_OFF);
+    IUFillSwitchVector(&EncoderResetSP, EncoderResetS, 1, getDeviceName(), "RUN_ENCODER_RESET", "Run encoder reset",
+                       SITE_TAB, IP_RW, ISR_ATMOST1, 0, IPS_OK);
 
     // IText PortT[1] {};
     // IUFillText(&PortT[0], "PORT", "Port", "/dev/serial0");
@@ -579,15 +579,17 @@ bool AshDome::UpdatePosition()
     bool turnsChecksum = check_checksum(turnsCounter);
     uint16_t positionResult = get_result(positionCounter);
     uint16_t turnsResult = get_result(turnsCounter);
-    double spt = (double)stepsPerTurn;
-    double az = fmod(((double)turnsResult*spt + (double)positionCounter)/ spt, 1)*360 - DomeHomePositionN[0].value;
-    /* LOGF_INFO("%f, %f", ((double)turnsResult*spt + (double)positionCounter)/ spt, fmod(((double)turnsResult*spt + (double)positionCounter)/ spt, spt)); */
+    double spt = (double)4096; // steps per turn
+    double tpc = (double)75; // turns per circle
+    double spc = (double)tpc*spt; // steps per circle
+    double az = fmod(((double)positionResult)/ spc, 1)*360 - DomeHomePositionN[0].value;
+    /* LOGF_INFO("%f, %f, %f, %f", ((double)turnsResult*spt + (double)positionCounter)/ spc, fmod(((double)turnsResult*spt + (double)positionCounter)/ spc, 1), DomeHomePositionN[0].value); */
     /* az = fmod(az, 360.0); */
     if (az < 0.0) {
       az += 360.0;
     }
     DomeAbsPosN[0].value = az;
-    LOGF_INFO("Encoder pos:%d, turns:%d, AZ: %f, stepsPerTurn: %d, checksum: (%d,%d)", positionResult,turnsResult, az, stepsPerTurn, positionChecksum, turnsChecksum);
+    /* LOGF_INFO("Encoder pos:%d, turns:%d, AZ: %f, stepsPerTurn: %d, checksum: (%d,%d), spc: %f", positionResult,turnsResult, az, stepsPerTurn, positionChecksum, turnsChecksum, spc); */
     return true;
 }
 
@@ -596,6 +598,7 @@ void AshDome::Reset()
     LOG_INFO("In Reset");
     uint8_t dummy = '\0';
     writeU8(ResetCounter, dummy);
+    usleep((useconds_t)200000); // 200ms as per spec */
 }
 /************************************************************************************
  *
@@ -666,7 +669,7 @@ void AshDome::TimerHit()
     UpdateShutterStatus();
     IDSetSwitch(&DomeShutterSP, nullptr);
 
-    UpdateRelayStatus();
+    /* TODO UpdateRelayStatus(); */
 
     /* LOG_INFO("TimerHit is exiting early, because Mike put a return here"); */
     /* return; */
