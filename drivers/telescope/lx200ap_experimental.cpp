@@ -933,7 +933,8 @@ bool LX200AstroPhysicsExperimental::ReadScopeStatus()
     }
     int ddd = 0;
     int fmm = 0;
-    if (getSiteLongitude(PortFD, &ddd, &fmm) < 0)
+    double ssf = 0.0;
+    if (getSiteLongitude(PortFD, &ddd, &fmm, &ssf) < 0)
     {
         LOG_DEBUG("Reading longitude failed :Gg %d");
     }
@@ -1556,7 +1557,7 @@ bool LX200AstroPhysicsExperimental::Handshake()
     disclaimerMessage();
 
     // Detect and set fomat. It should be LONG.
-    return (checkLX200Format(PortFD) == 0);
+    return (checkLX200EquatorialFormat(PortFD) == 0);
 }
 
 bool LX200AstroPhysicsExperimental::Disconnect()
@@ -1786,13 +1787,11 @@ bool LX200AstroPhysicsExperimental::Park()
 
     ln_hrz_posn horizontalPos;
     // Libnova south = 0, west = 90, north = 180, east = 270
-    horizontalPos.az = parkAz + 180;
-    if (horizontalPos.az > 360)
-        horizontalPos.az -= 360;
+    horizontalPos.az = parkAz;
     horizontalPos.alt = parkAlt;
 
     ln_equ_posn equatorialPos;
-    ln_get_equ_from_hrz(&horizontalPos, &observer, ln_get_julian_from_sys(), &equatorialPos);
+    get_equ_from_hrz(&horizontalPos, &observer, ln_get_julian_from_sys(), &equatorialPos);
     double lst = get_local_sidereal_time(observer.lng);
     double ha = get_local_hour_angle(lst, equatorialPos.ra / 15.);
 
@@ -2010,14 +2009,11 @@ bool LX200AstroPhysicsExperimental::UnPark()
         observer.lng -= 360;
 
     ln_hrz_posn horizontalPos;
-    // Libnova south = 0, west = 90, north = 180, east = 270
-    horizontalPos.az = unparkAz + 180;
-    if (horizontalPos.az > 360)
-        horizontalPos.az -= 360;
+    horizontalPos.az = unparkAz;
     horizontalPos.alt = unparkAlt;
 
     ln_equ_posn equatorialPos;
-    ln_get_equ_from_hrz(&horizontalPos, &observer, ln_get_julian_from_sys(), &equatorialPos);
+    get_equ_from_hrz(&horizontalPos, &observer, ln_get_julian_from_sys(), &equatorialPos);
 
     char AzStr[16], AltStr[16];
     fs_sexa(AzStr, unparkAz, 2, 3600);
@@ -2128,11 +2124,8 @@ bool LX200AstroPhysicsExperimental::SetCurrentPark()
     ln_equ_posn equatorialPos;
     equatorialPos.ra  = currentRA * 15;
     equatorialPos.dec = currentDEC;
-    ln_get_hrz_from_equ(&equatorialPos, &observer, ln_get_julian_from_sys(), &horizontalPos);
-
-    double parkAZ = horizontalPos.az - 180;
-    if (parkAZ < 0)
-        parkAZ += 360;
+    get_hrz_from_equ(&equatorialPos, &observer, ln_get_julian_from_sys(), &horizontalPos);
+    double parkAZ = horizontalPos.az;
     double parkAlt = horizontalPos.alt;
 
     char AzStr[16], AltStr[16];

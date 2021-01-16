@@ -1,8 +1,9 @@
 %global forgeurl https://github.com/indilib/indi.git
+%define __cmake_in_source_build %{_vpath_builddir}
 
 Name: indi
-Version: 1.8.7.git
-Release: 1%{?dist}
+Version: 1.8.8.git
+Release: %(date -u +%%Y%%m%%d%%H%%M%%S)%{?dist}
 Summary: Instrument Neutral Distributed Interface
 
 License: LGPLv2+ and GPLv2+

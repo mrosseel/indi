@@ -103,8 +103,8 @@ bool Telescope::initProperties()
     IUFillText(&TimeT[1], "OFFSET", "UTC Offset", nullptr);
     IUFillTextVector(&TimeTP, TimeT, 2, getDeviceName(), "TIME_UTC", "UTC", SITE_TAB, IP_RW, 60, IPS_IDLE);
 
-    IUFillNumber(&LocationN[LOCATION_LATITUDE], "LAT", "Lat (dd:mm:ss)", "%010.6m", -90, 90, 0, 0.0);
-    IUFillNumber(&LocationN[LOCATION_LONGITUDE], "LONG", "Lon (dd:mm:ss)", "%010.6m", 0, 360, 0, 0.0);
+    IUFillNumber(&LocationN[LOCATION_LATITUDE], "LAT", "Lat (dd:mm:ss.s)", "%012.8m", -90, 90, 0, 0.0);
+    IUFillNumber(&LocationN[LOCATION_LONGITUDE], "LONG", "Lon (dd:mm:ss.s)", "%012.8m", 0, 360, 0, 0.0);
     IUFillNumber(&LocationN[LOCATION_ELEVATION], "ELEV", "Elevation (m)", "%g", -200, 10000, 0, 0);
     IUFillNumberVector(&LocationNP, LocationN, 3, getDeviceName(), "GEOGRAPHIC_COORD", "Scope Location", SITE_TAB,
                        IP_RW, 60, IPS_IDLE);
@@ -169,6 +169,28 @@ bool Telescope::initProperties()
     if (nSlewRate >= 4)
         IUFillSwitchVector(&SlewRateSP, SlewRateS, nSlewRate, getDeviceName(), "TELESCOPE_SLEW_RATE", "Slew Rate",
                            MOTION_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+
+    if (CanTrackSatellite())
+    {
+        IUFillText(&TLEtoTrackT[0], "TLE", "TLE", "");
+        IUFillTextVector(&TLEtoTrackTP, TLEtoTrackT, 1, getDeviceName(), "SAT_TLE_TEXT", "Orbit Params", SATELLITE_TAB, 
+        IP_RW, 60, IPS_IDLE);
+
+        char curTime[32] = {0};
+        std::time_t t = std::time(nullptr);
+        struct std::tm *utctimeinfo = std::gmtime(&t);
+        strftime(curTime, sizeof(curTime), "%Y-%m-%dT%H:%M:%S", utctimeinfo);
+        
+        IUFillText(&SatPassWindowT[SAT_PASS_WINDOW_END], "SAT_PASS_WINDOW_END", "End UTC", curTime);
+        IUFillText(&SatPassWindowT[SAT_PASS_WINDOW_START], "SAT_PASS_WINDOW_START", "Start UTC", curTime);
+        IUFillTextVector(&SatPassWindowTP, SatPassWindowT, SAT_PASS_WINDOW_COUNT, getDeviceName(),
+        "SAT_PASS_WINDOW", "Pass Window", SATELLITE_TAB, IP_RW, 60, IPS_IDLE);
+
+        IUFillSwitch(&TrackSatS[SAT_TRACK], "SAT_TRACK", "Track", ISS_OFF);
+        IUFillSwitch(&TrackSatS[SAT_HALT], "SAT_HALT", "Halt", ISS_ON);
+        IUFillSwitchVector(&TrackSatSP, TrackSatS, SAT_TRACK_COUNT, getDeviceName(), "SAT_TRACKING_STAT",
+        "Sat tracking", SATELLITE_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
+    }
 
     IUFillSwitch(&ParkS[0], "PARK", "Park(ed)", ISS_OFF);
     IUFillSwitch(&ParkS[1], "UNPARK", "UnPark(ed)", ISS_OFF);
@@ -369,6 +391,13 @@ bool Telescope::updateProperties()
                 setSimulatePierSide(value == ISS_ON);
         }
 
+        if (CanTrackSatellite())
+        {
+            defineText(&TLEtoTrackTP);
+            defineText(&SatPassWindowTP);
+            defineSwitch(&TrackSatSP);
+        }
+
         if (HasPECState())
             defineSwitch(&PECStateSP);
 
@@ -421,6 +450,13 @@ bool Telescope::updateProperties()
             deleteProperty(SimulatePierSideSP.name);
             if (getSimulatePierSide() == true)
                 deleteProperty(PierSideSP.name);
+        }
+
+        if (CanTrackSatellite())
+        {
+            deleteProperty(TLEtoTrackTP.name);
+            deleteProperty(SatPassWindowTP.name);
+            deleteProperty(TrackSatSP.name);
         }
 
         if (HasPECState())
@@ -1106,6 +1142,10 @@ bool Telescope::ISNewSwitch(const char *dev, const char *name, ISState *states, 
                     IUResetSwitch(&MovementNSSP);
                     MovementNSSP.s = IPS_IDLE;
                     last_ns_motion = -1;
+                    // Update Target when stopped so that domes can track
+                    TargetN[AXIS_RA].value = EqN[AXIS_RA].value;
+                    TargetN[AXIS_DE].value = EqN[AXIS_DE].value;
+                    IDSetNumber(&TargetNP, nullptr);
                 }
                 else
                     MovementNSSP.s = IPS_ALERT;
@@ -1167,6 +1207,10 @@ bool Telescope::ISNewSwitch(const char *dev, const char *name, ISState *states, 
                     IUResetSwitch(&MovementWESP);
                     MovementWESP.s = IPS_IDLE;
                     last_we_motion = -1;
+                    // Update Target when stopped so that domes can track
+                    TargetN[AXIS_RA].value = EqN[AXIS_RA].value;
+                    TargetN[AXIS_DE].value = EqN[AXIS_DE].value;
+                    IDSetNumber(&TargetNP, nullptr);
                 }
                 else
                     MovementWESP.s = IPS_ALERT;
@@ -1658,6 +1702,7 @@ bool Telescope::processLocationInfo(double latitude, double longitude, double el
     {
         LocationNP.s = IPS_OK;
         IDSetNumber(&LocationNP, nullptr);
+        return true;
     }
     else if (latitude == 0 && longitude == 0)
     {
@@ -1711,14 +1756,18 @@ bool Telescope::updateLocation(double latitude, double longitude, double elevati
 void Telescope::updateObserverLocation(double latitude, double longitude, double elevation)
 {
     INDI_UNUSED(elevation);
-    // JM: INDI Longitude is 0 to 360 increasing EAST. libnova East is Positive, West is negative
     lnobserver.lng = longitude;
-
+    // JM: INDI Longitude is 0 to 360 increasing EAST. libnova East is Positive, West is negative
     if (lnobserver.lng > 180)
         lnobserver.lng -= 360;
     lnobserver.lat = latitude;
 
-    LOGF_INFO("Observer location updated: Longitude (%g) Latitude (%g)", lnobserver.lng, lnobserver.lat);
+    char lat_str[MAXINDIFORMAT];
+    char lng_str[MAXINDIFORMAT];
+    fs_sexa(lat_str, lnobserver.lat, 2, 36000);
+    fs_sexa(lng_str, lnobserver.lng, 2, 36000);
+    // Choose WGS 84, also known as EPSG:4326 for latitude/longitude ordering
+    LOGF_INFO("Observer location updated: Latitude %.12s (%g) Longitude %.12s (%g)", lat_str, lnobserver.lat, lng_str, lnobserver.lng);
 }
 
 bool Telescope::SetParkPosition(double Axis1Value, double Axis2Value)
@@ -3020,10 +3069,10 @@ double Telescope::getAzimuth(double r, double d)
     lnradec.ra  = (r * 360) / 24.0;
     lnradec.dec = d;
 
-    ln_get_hrz_from_equ(&lnradec, &lnobserver, ln_get_julian_from_sys(), &altaz);
+    get_hrz_from_equ(&lnradec, &lnobserver, ln_get_julian_from_sys(), &altaz);
 
     /* libnova measures azimuth from south towards west */
-    return (range360(altaz.az + 180));
+    return altaz.az;
 }
 
 

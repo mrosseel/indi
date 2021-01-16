@@ -121,6 +121,12 @@ bool Dome::initProperties()
     IUFillSwitchVector(&MountPolicySP, MountPolicyS, 2, getDeviceName(), "MOUNT_POLICY", "Mount Policy", OPTIONS_TAB, IP_RW,
                        ISR_1OFMANY, 60, IPS_IDLE);
 
+    // Shutter Policy
+    IUFillSwitch(&ShutterParkPolicyS[SHUTTER_CLOSE_ON_PARK], "SHUTTER_CLOSE_ON_PARK", "Close On Park", ISS_OFF);
+    IUFillSwitch(&ShutterParkPolicyS[SHUTTER_OPEN_ON_UNPARK], "SHUTTER_OPEN_ON_UNPARK", "Open On UnPark", ISS_OFF);
+    IUFillSwitchVector(&ShutterParkPolicySP, ShutterParkPolicyS, 2, getDeviceName(), "DOME_SHUTTER_PARK_POLICY", "Shutter",
+                       OPTIONS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
+
     // Measurements
     IUFillNumber(&DomeMeasurementsN[DM_DOME_RADIUS], "DM_DOME_RADIUS", "Radius (m)", "%6.2f", 0.0, 50.0, 1.0, 0.0);
     IUFillNumber(&DomeMeasurementsN[DM_SHUTTER_WIDTH], "DM_SHUTTER_WIDTH", "Shutter width (m)", "%6.2f", 0.0, 10.0, 1.0,
@@ -269,7 +275,10 @@ bool Dome::updateProperties()
     if (isConnected())
     {
         if (HasShutter())
+        {
             defineSwitch(&DomeShutterSP);
+            defineSwitch(&ShutterParkPolicySP);
+        }
 
         //  Now we add our Dome specific stuff
         defineSwitch(&DomeMotionSP);
@@ -319,7 +328,10 @@ bool Dome::updateProperties()
     else
     {
         if (HasShutter())
+        {
             deleteProperty(DomeShutterSP.name);
+            deleteProperty(ShutterParkPolicySP.name);
+        }
 
         deleteProperty(DomeMotionSP.name);
 
@@ -721,6 +733,16 @@ bool Dome::ISNewSwitch(const char * dev, const char * name, ISState * states, ch
             return true;
         }
         ////////////////////////////////////////////
+        // Shutter Parking Policy
+        ////////////////////////////////////////////
+        else if (!strcmp(name, ShutterParkPolicySP.name))
+        {
+            IUUpdateSwitch(&ShutterParkPolicySP, states, names, n);
+            ShutterParkPolicySP.s = IPS_OK;
+            IDSetSwitch(&ShutterParkPolicySP, nullptr);
+            return true;
+        }
+        ////////////////////////////////////////////
         // Backlash enable/disable
         ////////////////////////////////////////////
         else if (strcmp(name, DomeBacklashSP.name) == 0)
@@ -1031,6 +1053,11 @@ bool Dome::saveConfigItems(FILE * fp)
         IUSaveConfigNumber(fp, &DomeBacklashNP);
     }
 
+    if (HasShutter())
+    {
+        IUSaveConfigSwitch(fp, &ShutterParkPolicySP);
+    }
+
     controller->saveConfigItems(fp);
 
     return true;
@@ -1120,6 +1147,7 @@ void Dome::setShutterState(const Dome::ShutterState &value)
     IDSetSwitch(&DomeShutterSP, nullptr);
     m_ShutterState = value;
 }
+
 void Dome::setDomeState(const Dome::DomeState &value)
 {
     switch (value)
@@ -1294,13 +1322,13 @@ bool Dome::GetTargetAz(double &Az, double &Alt, double &minAz, double &maxAz)
     LOGF_DEBUG("OC.x: %g - OC.y: %g OC.z: %g", OptCenter.x, OptCenter.y, OptCenter.z);
 
     // To be sure mountHoriztonalCoords is up to date.
-    ln_get_hrz_from_equ(&mountEquatorialCoords, &observer, JD, &mountHoriztonalCoords);
+    get_hrz_from_equ(&mountEquatorialCoords, &observer, JD, &mountHoriztonalCoords);
 
-    mountHoriztonalCoords.az += 180;
-    if (mountHoriztonalCoords.az >= 360)
-        mountHoriztonalCoords.az -= 360;
-    if (mountHoriztonalCoords.az < 0)
-        mountHoriztonalCoords.az += 360;
+    //    mountHoriztonalCoords.az += 180;
+    //    if (mountHoriztonalCoords.az >= 360)
+    //        mountHoriztonalCoords.az -= 360;
+    //    if (mountHoriztonalCoords.az < 0)
+    //        mountHoriztonalCoords.az += 360;
 
     // Get optical axis point. This and the previous form the optical axis line
     OpticalVector(mountHoriztonalCoords.az, mountHoriztonalCoords.alt, OptVector);
@@ -1474,13 +1502,13 @@ void Dome::UpdateMountCoords()
     if (!HaveRaDec)
         return;
 
-    ln_get_hrz_from_equ(&mountEquatorialCoords, &observer, ln_get_julian_from_sys(), &mountHoriztonalCoords);
+    get_hrz_from_equ(&mountEquatorialCoords, &observer, ln_get_julian_from_sys(), &mountHoriztonalCoords);
 
-    mountHoriztonalCoords.az += 180;
-    if (mountHoriztonalCoords.az > 360)
-        mountHoriztonalCoords.az -= 360;
-    if (mountHoriztonalCoords.az < 0)
-        mountHoriztonalCoords.az += 360;
+    //    mountHoriztonalCoords.az += 180;
+    //    if (mountHoriztonalCoords.az > 360)
+    //        mountHoriztonalCoords.az -= 360;
+    //    if (mountHoriztonalCoords.az < 0)
+    //        mountHoriztonalCoords.az += 360;
 
     // Control debug flooding
     if (fabs(mountHoriztonalCoords.az - prev_az) > DOME_COORD_THRESHOLD ||

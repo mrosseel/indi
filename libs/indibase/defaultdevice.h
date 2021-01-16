@@ -89,6 +89,11 @@ extern const char *GUIDE_TAB;
 extern const char *ALIGNMENT_TAB;
 
 /**
+ * @brief SATELLITE_TAB
+ */
+extern const char *SATELLITE_TAB;
+
+/**
  * @brief INFO_TAB Where all the properties for general information are located.
  */
 extern const char *INFO_TAB;
@@ -297,6 +302,8 @@ class INDI::DefaultDevice : public INDI::BaseDevice
          * @brief setInterface Set driver interface. By default the driver interface is set to GENERAL_DEVICE.
          * You may send an ORed list of DeviceInterface values.
          * @param value ORed list of DeviceInterface values.
+         * @warning This only updates the internal driver interface property and does not send it to the
+         * client. To synchronize the client, use syncDriverInfo funciton.
          */
         void setDriverInterface(uint16_t value);
 
@@ -461,6 +468,12 @@ class INDI::DefaultDevice : public INDI::BaseDevice
         }
 
         /**
+         * @brief setActiveConnection Switch the active connection to the passed connection plugin
+         * @param existingConnection pointer to an existing connection to be made active.
+         */
+        void setActiveConnection(Connection::Interface *existingConnection);
+
+        /**
          * @brief setDefaultPollingPeriod Change the default polling period to call TimerHit() function in the driver.
          * @param period period in milliseconds
          * @note default period is 1000ms
@@ -483,6 +496,21 @@ class INDI::DefaultDevice : public INDI::BaseDevice
             return static_cast<uint32_t>(PollPeriodN[0].value);
         }
 
+        /**
+         * @brief isConfigLoading Check if driver configuration is currently in the process of getting loaded.
+         * @return True if property loading in progress, false otherwise.
+         */
+        bool isConfigLoading() const
+        {
+            return m_ConfigLoading;
+        }
+
+        /**
+         * @brief syncDriverInfo sends the current driver information to the client.
+         */
+        void syncDriverInfo();
+
+
         /** \return Default name of the device. */
         virtual const char *getDefaultName() = 0;
 
@@ -493,9 +521,10 @@ class INDI::DefaultDevice : public INDI::BaseDevice
 
     private:
         bool isInit { false };
-        bool pDebug { false };
-        bool pSimulation { false };
-        bool pDefaultConfigLoaded {false};
+        bool m_Debug { false };
+        bool m_Simulation { false };
+        bool m_DefaultConfigLoaded {false};
+        bool m_ConfigLoading { false };
 
         uint16_t majorVersion { 1 };
         uint16_t minorVersion { 0 };
